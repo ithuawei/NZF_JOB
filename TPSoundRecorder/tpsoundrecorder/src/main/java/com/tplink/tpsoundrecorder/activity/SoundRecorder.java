@@ -135,21 +135,22 @@ public class SoundRecorder extends Activity
         }
     };
 
-    AlertDialog mSaveDialog;
+    AlertDialog mSaveDialog;    //是否悬着保存
 
-    ProgressBar mStateProgressBar;
+    ProgressBar mStateProgressBar;  //试听进度条
 
-    TextView mPlayCurrentTimeTv;
+    TextView mPlayCurrentTimeTv;    //试听里变动的时间
 
-    TextView mPlayFullTimeTv;
+    TextView mPlayFullTimeTv;       //试听里右侧的全部时间
 
-    Toolbar mToolbar;
+    Toolbar mToolbar;   //上方的Toobar
 
-    ImageView mMoreIv;
+    ImageView mMoreIv;  //Toobar里的菜单键
 
     ImageButton mRecordButton;
 
     ImageButton mStopButton;
+
     ImageButton mFlagButton;
 
     TextView mStateMessage;
@@ -163,9 +164,8 @@ public class SoundRecorder extends Activity
     View mRotateView;
 
     WaveView mWaveView;
-    WaveHelper mWaveHelper;
 
-    private Toast mToast;
+    WaveHelper mWaveHelper;
 
     private BroadcastReceiver mSDCardMountEventReceiver = null;
 
@@ -197,6 +197,7 @@ public class SoundRecorder extends Activity
     @Override
     public void onCreate(Bundle icycle) {
         super.onCreate(icycle);
+        Toast.makeText(this, "onCreate", Toast.LENGTH_SHORT).show();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             Window window = getWindow();
             window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS
@@ -267,11 +268,17 @@ public class SoundRecorder extends Activity
 
         checkPermission();
 
-        // check if support call recording with country code
+        /**
+         检查是否支持通话录音，根据国家码
+         check if support call recording with country code
+         *
+         */
         isSupportCountry = AndroidUtil.isSupportCallRecording(country_code);
     }
+
     /**
      * Check permission.
+     * 检查权限-录音，写入外部卡，如过被禁了就提示获取
      *
      * @return true, if successful
      */
@@ -287,7 +294,7 @@ public class SoundRecorder extends Activity
             if (!shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO)
                     && !shouldShowRequestPermissionRationale(
                     Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
-
+                //
                 requestPermissions(new String[]{
                         Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.RECORD_AUDIO
                 }, REQUEST_CODE_ASK_PERMISSIONS);
@@ -317,7 +324,9 @@ public class SoundRecorder extends Activity
     }
 
     /**
-     * Service启动后，实例化成功Recorder就会发送一个广播
+     * Service启动后，实例化成功Recorder收到一个广播
+     * 1.录音已经准备好
+     * 2.录音已经保存完成-保存失败，保存成功
      */
     private BroadcastReceiver mRecorderBroadcastReceiver = new BroadcastReceiver() {
 
@@ -336,7 +345,7 @@ public class SoundRecorder extends Activity
                     Toast.makeText(SoundRecorder.this, R.string.toast_save_successfully,
                             Toast.LENGTH_SHORT).show();
                 }
-
+                //如果是在后台，返回result，并并关闭当前窗口
                 if (mExitAfterRecord && uri != null) {
                     SoundRecorder.this.setResult(RESULT_OK, new Intent().setData(uri));
                     SoundRecorder.this.finish();
@@ -347,11 +356,12 @@ public class SoundRecorder extends Activity
 
     protected void onRecorderPrepareFinished() {
         if (mWaveView != null) {
+            //view获取播放对象，即可根据播放的属性进行对应的调整
             mWaveView.setRecorder(SoundRecorderService.mRecorder);
         }
-
+        //监听播放器的改变状态。
         SoundRecorderService.mRecorder.setOnStateChangedListener(SoundRecorder.this);
-
+        //组测外部卡的状态
         registerExternalStorageListener();
 //        String ssrRet = SystemProperties.get("ro.qc.sdk.audio.ssr", "false");
 //        if (ssrRet.contains("true")) {
@@ -442,8 +452,7 @@ public class SoundRecorder extends Activity
     }
 
     private void startRotateAnimation() {
-        mRotateView.animate().alpha(1).start();
-
+        mRotateView.animate().alpha(1).start();//无到有
         mRotateView.setRotation(0);
         mRotateAnimator = ObjectAnimator.ofFloat(mRotateView, "rotation", ROTATE_DEGREES);
         mRotateAnimator.setDuration(2000);
@@ -453,9 +462,9 @@ public class SoundRecorder extends Activity
     }
 
     private void stopRotateAnimation() {
-        mRotateView.animate().alpha(0).setDuration(1000)
+        mRotateView.animate().alpha(0).setDuration(1000)//有到无
+                //当前角度+360,相当于：转到哪，停止时都要再转一圈再消失。
                 .rotation(mRotateView.getRotation() + ROTATE_DEGREES).withEndAction(new Runnable() {
-
             @Override
             public void run() {
                 mRotateView.setRotation(0);
@@ -492,6 +501,7 @@ public class SoundRecorder extends Activity
                 } else if (mRecorderState == Recorder.RECORDING_STATE) {
                     sendCommandToService(SoundRecorderService.ACTION_PAUSE_RECORDING);
                     return;
+                    //未启动状态，就进行录制
                 } else {
                     Bundle bundle = new Bundle();
                     bundle.putInt(SoundRecorderService.EXTRA_ACTION_NAME,
@@ -506,7 +516,7 @@ public class SoundRecorder extends Activity
                 invalidateOptionsMenu();//刷新菜单（相当于：再次调用onCreateOptionsMenu方法）
                 break;
             case R.id.ib_stop:
-                // 如果录音时间短于1秒，则弹出提示
+                // 如果录音时间大于1秒，就正常的停止和保存并通知
                 if (SoundRecorderService.mRecorder.sampleLength() >= 1) {
                     sendCommandToService(SoundRecorderService.ACTION_STOP_RECORDING);
                     mRecorderStop = true;
@@ -514,15 +524,10 @@ public class SoundRecorder extends Activity
                     mTimerView.setText(timeStr + ".0");
                     showSaveDialog();
                     invalidateOptionsMenu();
+                    // 如果录音时间短于1秒，则弹出提示不可少于1秒。
                 } else {
-                    if (mToast == null) {
-                        mToast = Toast.makeText(SoundRecorder.this,
-                                R.string.toast_record_time_too_short, Toast.LENGTH_SHORT);
-                    } else {
-                        mToast.setText(R.string.toast_record_time_too_short);
-                    }
-
-                    mToast.show();
+                    Toast.makeText(this,
+                            R.string.toast_record_time_too_short, Toast.LENGTH_SHORT).show();
                 }
                 mFlagView.setVisibility(View.GONE);
 

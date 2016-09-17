@@ -158,6 +158,7 @@ public class Recorder implements OnCompletionListener, OnErrorListener {
     }
 
     /**
+     * 重置录音机状态，如果已经录制过了就删除。
      * Resets the recorder state. If a sample was recorded, the file is deleted.
      */
     public void delete() {
@@ -172,7 +173,7 @@ public class Recorder implements OnCompletionListener, OnErrorListener {
         signalStateChanged(IDLE_STATE);
     }
 
-    /**
+    /**重置录音机状态，如果已经录制过了，该文件将被留在磁盘上，并将被重新使用为一个新的记录
      * Resets the recorder state. If a sample was recorded, the file is left on
      * disk and will be reused for a new recording.
      */

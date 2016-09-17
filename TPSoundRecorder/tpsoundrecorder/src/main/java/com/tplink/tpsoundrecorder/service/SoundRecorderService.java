@@ -593,6 +593,14 @@ public class SoundRecorderService extends Service {
         return uri;
     }
 
+    /**
+     * 服务销毁：
+     * 1.录制器清空
+     * 2.移除录制剩余时间提醒
+     * 3.移除电池电量监听
+     * 4.移除电话通话状态的监听
+     * 5.取消相机状态的广播监听
+     */
     @Override
     public void onDestroy() {
         super.onDestroy();
@@ -704,7 +712,7 @@ public class SoundRecorderService extends Service {
     }
 
     /**
-     *  的广播,收到个指令，发送给Handlder处理------------------------------
+     * 使用相机的广播,收到个指令，发送给Handlder处理------------------------------
      */
     //注册使用相机广播
     private void registerCameraRecordingBroadcast() {
