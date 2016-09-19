@@ -7,8 +7,6 @@ import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.pm.ActivityInfo;
-import android.hardware.SensorManager;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Bundle;
@@ -17,6 +15,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -79,7 +78,7 @@ public class SoundListActivity extends AppCompatActivity {
                 for (int i = 0; i < deletSize; i++) {
                     File file = mFileDeleteList.get(i);
                     if (file != null && file.delete()) {
-                        MediaScannerConnection.scanFile(mContext, new String[] {
+                        MediaScannerConnection.scanFile(mContext, new String[]{
                                 file.getAbsolutePath()
                         }, null, null);
                     }
@@ -104,11 +103,11 @@ public class SoundListActivity extends AppCompatActivity {
         setContentView(R.layout.activity_sound_list);
 
         mEmptyView = findViewById(R.id.tv_empty);
-        mLv = (ListView)findViewById(R.id.lv);
-        toolbar = (Toolbar)findViewById(R.id.toolbar);
+        mLv = (ListView) findViewById(R.id.lv);
+        toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         initToolbar();
-
+        //先加载声音列表
         loadSoundList();
 
         mAdapter = new RecordingListAdapter(mContext, mFileList, NOSELECT_STATE);
@@ -121,7 +120,7 @@ public class SoundListActivity extends AppCompatActivity {
     public boolean onCreateOptionsMenu(Menu menu) {
         SoundListActivity.this.getMenuInflater().inflate(R.menu.delete_menu, menu);
         mMenu = menu;
-        mMenu.getItem(DELETE_MENU_ITEM).setVisible(true);
+        mMenu.getItem(DELETE_MENU_ITEM).setVisible(false);
         return super.onCreateOptionsMenu(menu);
     }
 
@@ -229,10 +228,10 @@ public class SoundListActivity extends AppCompatActivity {
                         + SoundRecorderService.FOLDER_NAME;
             }
         }
-
+        //  /storage/emulated/0     /      SoundRecorder
         internalPath = AndroidUtil.getPhoneLocalStoragePath(mContext) + File.separator
                 + SoundRecorderService.FOLDER_NAME;
-
+        //SD卡路径
         if (sdPath != null) {
             File sdDir = new File(sdPath);
             File[] soundFileList = sdDir.listFiles();
@@ -245,7 +244,7 @@ public class SoundListActivity extends AppCompatActivity {
                 }
             }
         }
-
+        //内部路径
         if (internalPath != null) {
             File internalDir = new File(internalPath);
             File[] soundFileList = internalDir.listFiles();
@@ -266,7 +265,7 @@ public class SoundListActivity extends AppCompatActivity {
 
             @Override
             public int compare(File lhs, File rhs) {
-                return (int)(rhs.lastModified() - lhs.lastModified());
+                return (int) (rhs.lastModified() - lhs.lastModified());
             }
         });
     }
@@ -331,11 +330,11 @@ public class SoundListActivity extends AppCompatActivity {
             if (convertView == null) {
                 viewHolder = new ViewHolder();
                 convertView = inflater.inflate(R.layout.item_sound, null);
-                viewHolder.nameView = (TextView)convertView.findViewById(R.id.tv_file_name);
-                viewHolder.checkBox = (CheckBox)convertView.findViewById(R.id.cb_select);
+                viewHolder.nameView = (TextView) convertView.findViewById(R.id.tv_file_name);
+                viewHolder.checkBox = (CheckBox) convertView.findViewById(R.id.cb_select);
                 convertView.setTag(viewHolder);
             } else {
-                viewHolder = (ViewHolder)convertView.getTag();
+                viewHolder = (ViewHolder) convertView.getTag();
             }
             final File file = mList.get(position);
             viewHolder.nameView.setText(file.getName());

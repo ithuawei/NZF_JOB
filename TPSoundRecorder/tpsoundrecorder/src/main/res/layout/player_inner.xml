@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/rl_player"
+    android:layout_width="match_parent"
+    android:layout_height="198dp"
+    android:layout_alignParentBottom="true"
+    android:layout_below="@+id/up"
+    android:background="#2D2D2D">
+
+    <RelativeLayout
+        android:id="@+id/rl_player_inner_time"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="25dp"
+        android:padding="7dp">
+
+        <TextView
+            android:id="@+id/tv_player_inner_time_start"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="00:00.0"
+            android:textColor="#AFAFAF"
+            android:textSize="10sp"
+            />
+
+        <TextView
+            android:id="@+id/tv_player_inner_time_end"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentRight="true"
+            android:text="-00:00.8"
+            android:textColor="#AFAFAF"
+            android:textSize="10sp"
+            />
+    </RelativeLayout>
+
+    <RelativeLayout
+        android:id="@+id/rl_player_inner_progress"
+        android:layout_width="match_parent"
+        android:layout_height="18dp"
+        android:layout_below="@id/rl_player_inner_time">
+        <!--style="@style/TpLink.ProgressBar.Horizontal"-->
+        <ProgressBar
+            android:id="@+id/pb_player_inner_progressBar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="4dp"
+            android:max="100"
+            android:progress="80"
+            android:progressDrawable="@drawable/progressbar_drawable"
+            android:visibility="visible"/>
+
+        <ImageView
+            android:id="@+id/iv_player_inner_flag_node_01"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/pb_player_inner_progressBar"
+            android:layout_marginLeft="40dp"
+            android:src="@mipmap/player_inner_flag_node"/>
+
+        <ImageView
+            android:id="@+id/iv_player_inner_flag_node_02"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/pb_player_inner_progressBar"
+            android:layout_marginLeft="130dp"
+            android:src="@mipmap/player_inner_flag_node"/>
+
+        <ImageView
+            android:id="@+id/iv_player_inner_flag_node_03"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/pb_player_inner_progressBar"
+            android:layout_marginLeft="140dp"
+            android:src="@mipmap/player_inner_flag_node"/>
+
+        <ImageView
+            android:id="@+id/iv_player_inner_flag_node_04"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/pb_player_inner_progressBar"
+            android:layout_marginLeft="250dp"
+            android:src="@mipmap/player_inner_flag_node"/>
+    </RelativeLayout>
+
+    <RelativeLayout
+        android:id="@+id/rl_player_inner_play_status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/rl_player_inner_progress"
+        android:layout_margin="29dp">
+
+        <ImageButton
+            android:id="@+id/ibt_player_inner_flag"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:layout_alignParentLeft="true"
+            android:layout_centerVertical="true"
+            android:layout_marginLeft="15dp"
+            android:src="@drawable/recorder_or_player_flag"
+            />
+
+        <ImageButton
+            android:id="@+id/ibt_player_inner_start_pause"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:background="@mipmap/player_inner_start"
+            />
+
+        <ImageButton
+            android:id="@+id/ibt_player_inner_stop_gone"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentRight="true"
+            android:layout_centerVertical="true"
+            android:layout_marginRight="15dp"
+            android:background="@drawable/player_inner_stop"
+            android:src="@drawable/player_inner_stop"
+            />
+    </RelativeLayout>
+</RelativeLayout>

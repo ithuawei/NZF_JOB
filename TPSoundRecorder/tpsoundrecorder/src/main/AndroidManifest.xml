@@ -69,6 +69,7 @@
             android:screenOrientation="portrait"/>
         <!--录制服务-->
         <service android:name=".service.SoundRecorderService"/>
+        <activity android:name=".activity.SongsAndPlayerActivity"/>
     </application>
 
 </manifest>

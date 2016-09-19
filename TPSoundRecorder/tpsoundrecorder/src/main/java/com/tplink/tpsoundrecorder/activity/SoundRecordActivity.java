@@ -12,6 +12,7 @@
 
 package com.tplink.tpsoundrecorder.activity;
 
+
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v7.app.AppCompatActivity;
@@ -63,8 +64,9 @@ public class SoundRecordActivity extends AppCompatActivity implements onSelectio
         mPagerSlidingTabStrip.setTextColor(tabTextColor);
         mPagerSlidingTabStrip.setViewPager(mTabViewPager);
     }
+
     @Override
-    public void onSelectionModeStart(Fragment currentFragment) {
+    public void onSelectionModeStart(android.support.v4.app.Fragment currentFragment) {
         isSelectionMode = true;
         mCurrentFragment = currentFragment;
         for (int i = 0; i < mPagerSlidingTabStrip.getTabLayout().getChildCount(); i++) {

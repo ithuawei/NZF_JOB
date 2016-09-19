@@ -72,23 +72,23 @@ public class SoundRecorderService extends Service {
 
     public final static int ACTION_INVALID = 0;
 
-    public final static int ACTION_INIT = ACTION_INVALID + 1;
+    public final static int ACTION_INIT = 1;
 
-    public final static int ACTION_START_RECORDING = ACTION_INIT + 1;
+    public final static int ACTION_START_RECORDING = 2;
 
-    public final static int ACTION_PAUSE_RECORDING = ACTION_START_RECORDING + 1;
+    public final static int ACTION_PAUSE_RECORDING = 3;
 
-    public final static int ACTION_RESUME_RECORDING = ACTION_PAUSE_RECORDING + 1;
+    public final static int ACTION_RESUME_RECORDING = 4;
 
-    public final static int ACTION_STOP_RECORDING = ACTION_RESUME_RECORDING + 1;
+    public final static int ACTION_STOP_RECORDING = 5;
 
-    public static final int ACTION_SAVE_RECORDING = ACTION_STOP_RECORDING + 1;
+    public static final int ACTION_SAVE_RECORDING = 6;
 
-    public static final int ACTION_DELETE_RECORDING = ACTION_SAVE_RECORDING + 1;
+    public static final int ACTION_DELETE_RECORDING = 7;
 
-    public static final int ACTION_PLAY_RECORDING = ACTION_DELETE_RECORDING + 1;
+    public static final int ACTION_PLAY_RECORDING = 8;
 
-    public static final int ACTION_UPDATE_BACKGROUND_STATE = ACTION_PLAY_RECORDING + 1;
+    public static final int ACTION_UPDATE_BACKGROUND_STATE = 9;
 
     public static final String FOLDER_NAME = "SoundRecorder";
 
@@ -268,7 +268,7 @@ public class SoundRecorderService extends Service {
      * MediaPlaybackService to pause playback.
      */
     private void stopAudioPlayback() {
-        // 获取声音焦点，若在播放音乐，则暂停
+        // 获取声音焦点，若有其他正在在播放音乐，则暂停
         AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
         am.requestAudioFocus(mAudioFocusListener, AudioManager.STREAM_MUSIC,
                 AudioManager.AUDIOFOCUS_GAIN);
@@ -460,10 +460,10 @@ public class SoundRecorderService extends Service {
     private Uri addToMediaDB(File file) {
         Resources res = getResources();
         ContentValues cv = new ContentValues();
-        long current = System.currentTimeMillis();
-        long modDate = file.lastModified();
-        String title = mRecorder.getStartRecordingTime();
-        long sampleLengthMillis = mRecorder.sampleLength() * 1000L;
+        long current = System.currentTimeMillis();                  //现在的时间
+        long modDate = file.lastModified();                         //最后修改时间
+        String title = mRecorder.getStartRecordingTime();           //开始录制时间
+        long sampleLengthMillis = mRecorder.sampleLength() * 1000L; //时长
 
         Uri uri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
         final String[] ids = new String[]{
@@ -484,21 +484,18 @@ public class SoundRecorderService extends Service {
         // will be displayed automatically
         cv.put(MediaStore.Audio.Media.IS_MUSIC, "1");
 
-        cv.put(MediaStore.Audio.Media.TITLE, title);
-        cv.put(MediaStore.Audio.Media.DATA, file.getAbsolutePath());
-        cv.put(MediaStore.Audio.Media.DATE_ADDED, (int) (current / 1000));
-        cv.put(MediaStore.Audio.Media.DATE_MODIFIED, (int) (modDate / 1000));
-        cv.put(MediaStore.Audio.Media.DURATION, sampleLengthMillis);
-        cv.put(MediaStore.Audio.Media.MIME_TYPE, mRequestType);
+        cv.put(MediaStore.Audio.Media.TITLE, title);                            //名称
+        cv.put(MediaStore.Audio.Media.DATA, file.getAbsolutePath());            //绝对路径
+        cv.put(MediaStore.Audio.Media.DATE_ADDED, (int) (current / 1000));      //添加到数据库的时间
+        cv.put(MediaStore.Audio.Media.DATE_MODIFIED, (int) (modDate / 1000));   //文件最后修改时间
+        cv.put(MediaStore.Audio.Media.DURATION, sampleLengthMillis);            //时长
+        cv.put(MediaStore.Audio.Media.MIME_TYPE, mRequestType);                 //类型
         cv.put(MediaStore.Audio.Media.ARTIST, res.getString(R.string.audio_db_artist_name));
         cv.put(MediaStore.Audio.Media.ALBUM, "Audio recordings");
-        Log.d(TAG, "Inserting audio record: " + cv.toString());
         ContentResolver resolver = getContentResolver();
-        Uri base = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
-        Log.d(TAG, "ContentURI: " + base);
         Uri result;
         try {
-            result = resolver.insert(base, cv);
+            result = resolver.insert(uri, cv);
         } catch (Exception exception) {
             result = null;
         }
@@ -534,14 +531,13 @@ public class SoundRecorderService extends Service {
         }
     }
 
-    /*
+    /**
+     * 添加了audioid到playlistid播放列表，并保持播放列表里的顺序不变。
      * Add the given audioId to the playlist with the given playlistId; and
      * maintain the play_order in the playlist.
      */
     private void addToPlaylist(ContentResolver resolver, int audioId, long playlistId) {
-        String[] cols = new String[]{
-                "count(*)"
-        };
+        String[] cols = new String[]{"count(*)"};
         Uri uri = MediaStore.Audio.Playlists.Members.getContentUri("external", playlistId);
         Cursor cur = resolver.query(uri, cols, null, null, null);
         //来到首位
@@ -555,7 +551,8 @@ public class SoundRecorderService extends Service {
         resolver.insert(uri, values);
     }
 
-    /*
+    /**
+     * 从音频播放列表的数据库表或者默认播放列表的id
      * Obtain the id for the default play list from the audio_playlists table.
      */
     private int getPlaylistId(Resources res) {
@@ -582,9 +579,9 @@ public class SoundRecorderService extends Service {
         return id;
     }
 
-    /*
-     * Create a playlist with the given default playlist name, if no such
-     * playlist exists.
+    /**
+     * 如果没有这样的播放列表存在，就根据默认播放列表创建一个播放列表
+     * Create a playlist with the given default playlist name, if no such playlist exists.
      */
     private Uri createPlaylist(Resources res, ContentResolver resolver) {
         ContentValues cv = new ContentValues();

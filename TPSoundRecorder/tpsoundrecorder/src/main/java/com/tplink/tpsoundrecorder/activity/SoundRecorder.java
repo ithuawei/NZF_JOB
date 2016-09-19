@@ -55,6 +55,7 @@ import android.view.WindowManager;
 import android.view.animation.LinearInterpolator;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -76,6 +77,7 @@ import com.tplink.tpsoundrecorder.view.WaveView;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 
 public class SoundRecorder extends Activity
         implements Button.OnClickListener, Recorder.OnStateChangedListener {
@@ -104,6 +106,8 @@ public class SoundRecorder extends Activity
 
     private String timeCurremtMs;
 
+    private ArrayList<Integer> mSaveSongsSP;
+
     /**
      * 如果通过其他应用（如在彩信中添加录音附件）调用录音机，则录音结束后，会结束录音机应用
      */
@@ -125,12 +129,8 @@ public class SoundRecorder extends Activity
 
     final Handler mHandler = new Handler();
 
-    Runnable mUpdateTimer = new Runnable() {
+    Runnable mUpdateTimerRunable = new Runnable() {
         public void run() {
-            float time_ms = SoundRecorderService.mRecorder.sampleLength_ms();
-            timeCurremtMs = "" + time_ms;
-            char s = timeCurremtMs.charAt(timeCurremtMs.indexOf(".") + 1);
-            timeCurremtMs = "" + s;
             updateTimerView();
         }
     };
@@ -274,6 +274,8 @@ public class SoundRecorder extends Activity
          *
          */
         isSupportCountry = AndroidUtil.isSupportCallRecording(country_code);
+        mSaveSongsSP = new ArrayList();
+
     }
 
     /**
@@ -490,7 +492,6 @@ public class SoundRecorder extends Activity
     public void onClick(View button) {
         if (!button.isEnabled())
             return;
-
         switch (button.getId()) {
             case R.id.ib_record:
                 //暂停状态，就恢复
@@ -527,27 +528,30 @@ public class SoundRecorder extends Activity
                     // 如果录音时间短于1秒，则弹出提示不可少于1秒。
                 } else {
                     Toast.makeText(this,
-                            R.string.toast_record_time_too_short, Toast.LENGTH_SHORT).show();
+                            R.string.toast_record_time_too_short,
+                            Toast.LENGTH_SHORT).show();
                 }
                 mFlagView.setVisibility(View.GONE);
 
                 break;
             case R.id.bt_flag_time:
-                if (mRecorderState == Recorder.RECORDING_STATE) {
-                    mFlagView.setVisibility(View.VISIBLE);
-                }
                 //正在录制才能点击标记
                 if (mRecorderState == Recorder.RECORDING_STATE) {
-                    ObjectAnimator translationY = ObjectAnimator.ofFloat(mFlagView, "translationY", mFlagView.getHeight() * 2, 0);
+                    mFlagView.setVisibility(View.VISIBLE);
+                    ObjectAnimator translationY = ObjectAnimator.ofFloat(mFlagView, "translationY",
+                            mFlagView.getHeight() * 2, 0);
                     ObjectAnimator alpha = ObjectAnimator.ofFloat(mFlagView, "alpha", 0.0f, 1.0f);
                     AnimatorSet animatorSet = new AnimatorSet();
                     animatorSet.playTogether(translationY, alpha);
                     animatorSet.start();
+                    int sampleLength = SoundRecorderService.mRecorder.sampleLength();
                     mFlagView.setText("- " +
-                            SoundRecorderService.mRecorder.sampleLength() / 60 / 60 + ":" +
-                            SoundRecorderService.mRecorder.sampleLength() / 60 % 60 + ":" +
-                            SoundRecorderService.mRecorder.sampleLength() % 60 + "." +
+                            sampleLength / 60 / 60 + ":" +
+                            sampleLength/ 60 % 60 + ":" +
+                            sampleLength % 60 + "." +
                             timeCurremtMs + " -");
+                    //时间添加到集合，等下再保存sp
+                    mSaveSongsSP.add(sampleLength);
                 }
                 break;
         }
@@ -561,6 +565,7 @@ public class SoundRecorder extends Activity
                 .setPositiveButton(R.string.save_btn, new OnClickListener() {
                     public void onClick(DialogInterface dialog, int which) {
                         dialog.dismiss();
+
                         mSampleInterrupted = false;
                         mRecorderProcessed = true;
                         sendCommandToService(SoundRecorderService.ACTION_SAVE_RECORDING);
@@ -568,6 +573,7 @@ public class SoundRecorder extends Activity
                 }).setNegativeButton(R.string.delete_btn, new OnClickListener() {
                     public void onClick(DialogInterface dialog, int which) {
                         dialog.dismiss();
+                        mSaveSongsSP.clear();
                         showDeleteConfirmDialog();
                     }
                 }).setCancelable(false).show();
@@ -578,41 +584,39 @@ public class SoundRecorder extends Activity
                 .findViewById(R.id.tv_play_current_time);
         mPlayFullTimeTv = (TextView) saveDialogContentView.findViewById(R.id.tv_play_full_time);
 
-        // 显示音频的时间区间
+        //试听左侧文本，先默认显示00：00：00
         mPlayCurrentTimeTv.setText(String.format(mTimerFormat, 0, 0, 0));
-        mPlayFullTimeTv.setText(
-                String.format(mTimerFormat, SoundRecorderService.mRecorder.sampleLength() / 60 / 60,
-                        SoundRecorderService.mRecorder.sampleLength() / 60 % 60,
-                        SoundRecorderService.mRecorder.sampleLength() % 60));
-
+        //播放
         playButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (SoundRecorderService.mRecorder.sampleFile() == null
-                        || !SoundRecorderService.mRecorder.sampleFile().exists()) {
-                    Toast.makeText(SoundRecorder.this, R.string.toast_paly_failed,
-                            Toast.LENGTH_SHORT).show();
-                    mSaveDialog.dismiss();
-                }
-
                 sendCommandToService(SoundRecorderService.ACTION_PLAY_RECORDING);
             }
         });
+
+        EditText etName = (EditText) saveDialogContentView.findViewById(R.id.et_name);
+
     }
 
+    //确定删除？
     protected void showDeleteConfirmDialog() {
         new Builder(SoundRecorder.this, R.style.AlertDialogTheme)
                 .setTitle(R.string.action_delete).setMessage(R.string.delete_confirm_message)
+                //删除
                 .setPositiveButton(R.string.delete_btn, new OnClickListener() {
                     public void onClick(DialogInterface dialog, int which) {
+                        //对话消失
                         dialog.dismiss();
                         mSampleInterrupted = false;
                         mRecorderProcessed = true;
+                        //发送到服务，删除了录音
                         sendCommandToService(SoundRecorderService.ACTION_DELETE_RECORDING);
                     }
                 })
+                //取消
                 .setNegativeButton(android.R.string.cancel, new OnClickListener() {
                     public void onClick(DialogInterface dialog, int which) {
+                        //对话消失，显示刚才的保存对话框
                         dialog.dismiss();
                         showSaveDialog();
                     }
@@ -620,13 +624,15 @@ public class SoundRecorder extends Activity
     }
 
     private void openOptionDialog(final int optionType) {
+        //amr wav
         final int[] typeInfo = new int[]{
                 R.string.format_setting_amr_info, R.string.format_setting_wav_info
         };
+        //location  sdcard
         final int[] storageLocationResIds = new int[]{
                 R.string.storage_setting_local_item, R.string.storage_setting_sdcard_item
         };
-
+        //location sdcord
         String[] storageLocationStrs = null;
         if (AndroidUtil.getSDState(SoundRecorder.this) != null
                 && AndroidUtil.getSDState(SoundRecorder.this).equals(Environment.MEDIA_MOUNTED)) {
@@ -639,7 +645,7 @@ public class SoundRecorder extends Activity
                     getString(R.string.storage_setting_local_item)
             };
         }
-
+        //保存录音类型的adapter
         final ArrayAdapter<Integer> fileTypeAdapter = new ArrayAdapter<Integer>(this,
                 R.layout.item_file_type) {
             @Override
@@ -704,7 +710,6 @@ public class SoundRecorder extends Activity
                     case R.string.storage_setting_local_item:
                         setStorePathToLocal();
                         break;
-
                     default: {
                         Log.e(TAG, "Unexpected resource: "
                                 + getResources().getResourceEntryName(resId));
@@ -714,30 +719,31 @@ public class SoundRecorder extends Activity
         };
 
         AlertDialog ad = null;
-        if (optionType == SETTING_TYPE_STORAGE_LOCATION) {
+        if (optionType == SETTING_TYPE_FILE_TYPE) {
+            fileTypeAdapter.add(R.string.format_setting_amr_item);
+            if (mWAVSupport) {
+                fileTypeAdapter.add(R.string.format_setting_wav_item);
+            }
+            ad = new Builder(this).setTitle(R.string.format_setting)
+                    //单选，对应的“clickListener”里的操作,根据悬着进行操作。
+                    .setSingleChoiceItems(fileTypeAdapter, mFileType, clickListener)
+                    //点击取消就消失
+                    .setNegativeButton(android.R.string.cancel,
+                            new OnClickListener() {
+                                public void onClick(DialogInterface dialog, int which) {
+                                    dialog.dismiss();
+                                }
+                            }).create();
+        } else if (optionType == SETTING_TYPE_STORAGE_LOCATION) {
             ad = new Builder(this).setTitle(R.string.storage_setting)
+                    //同理，同上
                     .setSingleChoiceItems(storageLocationStrs, mPath, clickListener)
                     .setNegativeButton(android.R.string.cancel,
                             new OnClickListener() {
                                 public void onClick(DialogInterface dialog, int which) {
                                     dialog.dismiss();
                                 }
-                            })
-                    .create();
-        } else if (optionType == SETTING_TYPE_FILE_TYPE) {
-            fileTypeAdapter.add(R.string.format_setting_amr_item);
-            if (mWAVSupport) {
-                fileTypeAdapter.add(R.string.format_setting_wav_item);
-            }
-            ad = new Builder(this).setTitle(R.string.format_setting)
-                    .setSingleChoiceItems(fileTypeAdapter, mFileType, clickListener)
-                    .setNegativeButton(android.R.string.cancel,
-                            new OnClickListener() {
-                                public void onClick(DialogInterface dialog, int which) {
-                                    dialog.dismiss();
-                                }
-                            })
-                    .create();
+                            }).create();
         }
         ad.setCanceledOnTouchOutside(true);
         ad.show();
@@ -750,6 +756,7 @@ public class SoundRecorder extends Activity
     }
 
     protected void setStorePathToSD() {
+        //判断挂载着SD卡，就往下执行
         if (AndroidUtil.getSDState(SoundRecorder.this).equals(Environment.MEDIA_MOUNTED)) {
             mPath = SoundRecorderService.PATH_TYPE_SD;
             mPrefsStoragePathEditor.putInt("path", mPath);
@@ -759,6 +766,12 @@ public class SoundRecorder extends Activity
         }
     }
 
+    /**
+     * 菜单键，我们定义了里面有3个选项，填充进来即可，onCreateOptionsMenu：设置显示的项
+     *
+     * @param menu
+     * @return
+     */
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // TODO Auto-generated method stub
@@ -770,23 +783,16 @@ public class SoundRecorder extends Activity
         return true;
     }
 
+    /**
+     * 选择菜单对应的内容触发的操作
+     *
+     * @param item
+     * @return
+     */
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         // TODO Auto-generated method stub
         switch (item.getItemId()) {
-            case R.id.menu_item_my_records:
-                // 出货国家中可能会有部分国家不加入通话录音功能.
-                Intent intent = null;
-                if (isSupportCountry) {
-                    // 有录音和通话录音的版本
-                    intent = new Intent(SoundRecorder.this, SoundRecordActivity.class);
-                } else {
-                    // 无录音和通话录音Tab的版本
-                    intent = new Intent(SoundRecorder.this, SoundListActivity.class);
-                }
-                SoundRecorder.this.startActivity(intent);
-
-                break;
             case R.id.menu_item_filetype:
                 if (mRecorderState == Recorder.IDLE_STATE) {
                     openOptionDialog(SETTING_TYPE_FILE_TYPE);
@@ -797,11 +803,34 @@ public class SoundRecorder extends Activity
                     openOptionDialog(SETTING_TYPE_STORAGE_LOCATION);
                 }
                 break;
+            //List,跳到录音列表
+            case R.id.menu_item_my_records:
+                // 出货国家中可能会有部分国家不加入通话录音功能.
+                Intent intent = null;
+                if (isSupportCountry) {
+                    // 有录音和通话录音的版本
+                    intent = new Intent(SoundRecorder.this, SoundRecordActivity.class);
+                } else {
+                    // 无通话录音(无Tab)的版本
+                    intent = new Intent(SoundRecorder.this, SoundListActivity.class);
+                }
+                SoundRecorder.this.startActivity(intent);
+                break;
+            case R.id.menu_item_call_records:
+                SoundRecorder.this.startActivity(new Intent(SoundRecorder.this,
+                        SoundListActivity.class));
+                break;
+            case R.id.menu_item_test_records:
+                SoundRecorder.this.startActivity(new Intent(SoundRecorder.this,
+                        SongsAndPlayerActivity.class));
+                break;
         }
         return super.onOptionsItemSelected(item);
     }
 
-    /*
+    /**
+     * 判断后退键点击时：
+     * 1.正在播放和录音时
      * Handle the "back" hardware key.
      */
     @Override
@@ -810,17 +839,18 @@ public class SoundRecorder extends Activity
             switch (mRecorderState) {
                 case Recorder.PAUSE_STATE:
                 case Recorder.RECORDING_STATE:
-                    if (mExitAfterRecord) {
-                        sendCommandToService(SoundRecorderService.ACTION_STOP_RECORDING);
-                        mRecorderStop = true;
-                        String timeStr = String.format(mTimerFormat, 0, 0, 0);
-                        mTimerView.setText(timeStr);
-                        showSaveDialog();
-                        invalidateOptionsMenu();
-                    } else {
-                        mIsBackFinish = true;
-                        finish();
-                    }
+
+//                    if (mExitAfterRecord) {
+//                        sendCommandToService(SoundRecorderService.ACTION_STOP_RECORDING);
+//                        mRecorderStop = true;
+//                        String timeStr = String.format(mTimerFormat, 0, 0, 0);
+//                        mTimerView.setText(timeStr);
+//                        showSaveDialog();
+//                        invalidateOptionsMenu();
+//                    } else {
+                    mIsBackFinish = true;
+                    finish();
+//                    }
                     break;
             }
         }
@@ -830,7 +860,6 @@ public class SoundRecorder extends Activity
     @Override
     protected void onStart() {
         super.onStart();
-
         IntentFilter filter = new IntentFilter();
         filter.addAction(SoundRecorderService.ACTION_RECORDER_INIT_FINISH);
         filter.addAction(SoundRecorderService.ACTION_RECORDER_SAVE_FINISH);
@@ -852,7 +881,7 @@ public class SoundRecorder extends Activity
             unregisterReceiver(mRecorderBroadcastReceiver);
         }
 
-        // 通知service后台运行
+        //当前是录制或者暂停状态，就通知service在后台运行
         if (mRecorderState == Recorder.RECORDING_STATE || mRecorderState == Recorder.PAUSE_STATE) {
             Bundle bundle = new Bundle();
             bundle.putInt(SoundRecorderService.EXTRA_ACTION_NAME,
@@ -870,11 +899,12 @@ public class SoundRecorder extends Activity
         super.onPause();
     }
 
-    /*
+    /**
      * Called on destroy to unregister the SD card mount event receiver.
      */
     @Override
     public void onDestroy() {
+        // 取消注册SD卡拔出的监听
         if (mSDCardMountEventReceiver != null) {
             unregisterReceiver(mSDCardMountEventReceiver);
             mSDCardMountEventReceiver = null;
@@ -883,6 +913,7 @@ public class SoundRecorder extends Activity
         // 没有在录音，activity退出的时候，将service结束并结束此进程
         if (mRecorderState == Recorder.IDLE_STATE || mRecorderState == Recorder.INVALID_STATE) {
             stopService(new Intent(this, SoundRecorderService.class));
+            //进程都销毁
             android.os.Process.killProcess(android.os.Process.myPid());
         }
 
@@ -894,7 +925,10 @@ public class SoundRecorder extends Activity
         super.onDestroy();
     }
 
-    /*
+    /**
+     * 接收存储卡的移除和挂载的挂钩的广播。
+     * 1.移除后，自动保存位置为内部存储
+     * 2.
      * Registers an intent to listen for ACTION_MEDIA_EJECT/ACTION_MEDIA_MOUNTED
      * notifications.
      */
@@ -904,6 +938,7 @@ public class SoundRecorder extends Activity
                 @Override
                 public void onReceive(Context context, Intent intent) {
                     String action = intent.getAction();
+                    //
                     if (action.equals(Intent.ACTION_MEDIA_EJECT)) {
                         // SD卡拔出后，自动将保存位置改为内部存储
                         setStorePathToLocal();
@@ -929,31 +964,39 @@ public class SoundRecorder extends Activity
     private void updateTimerView() {
         Resources res = getResources();
 
+        //当前状态为录制或者播放
         boolean ongoing = mRecorderState == Recorder.RECORDING_STATE
                 || mRecorderState == Recorder.PLAYING_STATE;
 
         long time = ongoing ? SoundRecorderService.mRecorder.progress()
                 : SoundRecorderService.mRecorder.sampleLength();
-        String timeStr = String.format(mTimerFormat, time / 60 / 60, time / 60 % 60, time % 60);
 
+        //如果是播放
         if (mRecorderState == Recorder.PLAYING_STATE && mStateProgressBar != null) {
+            int sampleLength = SoundRecorderService.mRecorder.sampleLength();
             mStateProgressBar
-                    .setProgress((int) (100 * time / SoundRecorderService.mRecorder.sampleLength()));
+                    .setProgress((int) (100 * time / sampleLength));
             mPlayCurrentTimeTv.setText(
                     String.format(mTimerFormat, time / 60 / 60, time / 60 % 60, time % 60));
             mPlayFullTimeTv.setText(String.format(mTimerFormat,
-                    SoundRecorderService.mRecorder.sampleLength() / 60 / 60,
-                    SoundRecorderService.mRecorder.sampleLength() / 60 % 60,
-                    SoundRecorderService.mRecorder.sampleLength() % 60));
+                    sampleLength / 60 / 60, sampleLength / 60 % 60, sampleLength % 60));
+            //如果是录制
         } else if (mRecorderState == Recorder.RECORDING_STATE
                 || mRecorderState == Recorder.PAUSE_STATE) {
             if (timeCurremtMs != null) {
+                String timeStr = String.format(mTimerFormat,
+                        time / 60 / 60, time / 60 % 60, time % 60);
                 mTimerView.setText(timeStr + "." + timeCurremtMs);
             }
         }
 
         if (ongoing)
-            mHandler.postDelayed(mUpdateTimer, 10);
+            mHandler.postDelayed(mUpdateTimerRunable, 10);//定时更新
+
+        float time_ms = SoundRecorderService.mRecorder.sampleLength_ms();
+        timeCurremtMs = "" + time_ms;
+        char s = timeCurremtMs.charAt(timeCurremtMs.indexOf(".") + 1);
+        timeCurremtMs = "" + s;
     }
 
     /**
@@ -965,7 +1008,6 @@ public class SoundRecorder extends Activity
         switch (mRecorderState) {
             case Recorder.IDLE_STATE:
                 stopRecordingAnimator();
-
                 if (SoundRecorderService.mRecorder.sampleLength() == 0) {
                     mRecordButton.setImageResource(R.drawable.ic_start_recording);
                     mRecordButton.setEnabled(true);
@@ -1013,18 +1055,19 @@ public class SoundRecorder extends Activity
                 }
 
                 break;
+            //正在录制
             case Recorder.RECORDING_STATE:
+                //启动开始动画
                 startRecordingAnimator();
+                mRecordButton.setImageResource(R.drawable.ic_pause_recording);//变图标
+                mRecordButton.setEnabled(true);//中间按钮可点击
+                mRecordButton.setFocusable(true);//中间按钮得焦点
+                mStopButton.setEnabled(true);//停止按钮可点击
+                mStopButton.setFocusable(true);//停止按钮得焦点
 
-                mRecordButton.setImageResource(R.drawable.ic_pause_recording);
-                mRecordButton.setEnabled(true);
-                mRecordButton.setFocusable(true);
-                mStopButton.setEnabled(true);
-                mStopButton.setFocusable(true);
-
-                mMoreIv.setVisibility(View.INVISIBLE);
-                mStateMessage.setVisibility(View.VISIBLE);
-                mStateMessage.setText(res.getString(R.string.recording));
+                mMoreIv.setVisibility(View.INVISIBLE);//菜单键不可见
+                mStateMessage.setVisibility(View.VISIBLE);//录音状态文字可见
+                mStateMessage.setText(res.getString(R.string.recording));//录音状态文字改成录音状态
 
                 break;
 
@@ -1038,7 +1081,7 @@ public class SoundRecorder extends Activity
             case Recorder.PAUSE_STATE:
                 stopRecordingAnimator();
 
-                mRecordButton.setImageResource(R.drawable.ic_start_recording);
+                mRecordButton.setImageResource(R.drawable.ic_start_recording);//更换图标，其他同上
                 mRecordButton.setEnabled(true);
                 mRecordButton.setFocusable(true);
                 mStopButton.setEnabled(true);
@@ -1058,17 +1101,13 @@ public class SoundRecorder extends Activity
     /*
      * Called when Recorder changed it's state.
      */
+    @Override
     public void onStateChanged(int state) {
         mRecorderState = state;
 
         Log.i(TAG, "state = " + state);
 
-        if (state == Recorder.PLAYING_STATE) {
-            mSampleInterrupted = false;
-            mErrorUiMessage = null;
-        }
-
-        if (state == Recorder.RECORDING_STATE) {
+        if (state == Recorder.PLAYING_STATE || state == Recorder.RECORDING_STATE) {
             mSampleInterrupted = false;
             mErrorUiMessage = null;
         }
@@ -1079,6 +1118,7 @@ public class SoundRecorder extends Activity
     /*
      * Called when MediaPlayer encounters an error.
      */
+    @Override
     public void onError(int error) {
         Resources res = getResources();
         boolean isExit = false;
@@ -1086,12 +1126,11 @@ public class SoundRecorder extends Activity
         String message = null;
         switch (error) {
             case Recorder.SDCARD_ACCESS_ERROR:
-                Log.e(TAG, "Can\'t access USB storage");
+                Log.e(TAG, "Can't access USB storage");
                 break;
             case Recorder.IN_CALL_RECORD_ERROR:
                 // TODO: update error message to reflect that the recording
-                // could not be
-                // performed during a call.
+                // could not be performed during a call.
                 Log.e(TAG, "In call record error.");
                 isExit = true;
                 break;

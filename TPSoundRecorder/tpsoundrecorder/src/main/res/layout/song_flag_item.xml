@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent"
+                android:padding="15dp"
+              android:layout_height="wrap_content"
+              android:background="#242424">
+    <RelativeLayout
+        android:layout_marginLeft="28dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content">
+
+    <TextView
+
+        android:textColor="#6e6e6e"
+        android:layout_centerVertical="true"
+        android:textSize="15sp"
+        android:text="1."
+        android:layout_alignParentLeft="true"
+        android:id="@+id/tv_songs_flag_order"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
+    <TextView
+        android:layout_marginLeft="70dp"
+        android:layout_centerInParent="true"
+        android:textColor="#b9b9b9"
+        android:textSize="17sp"
+        android:id="@+id/tv_songs_flag"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="00:00.0"/>
+    </RelativeLayout>
+    <ImageButton
+        android:layout_marginRight="8dp"
+        android:layout_centerVertical="true"
+        android:id="@+id/ibt_delete_flag"
+        android:layout_alignParentRight="true"
+        android:background="@mipmap/flag_delete"
+        android:layout_width="17dp"
+        android:layout_height="17dp"/>
+</RelativeLayout>
