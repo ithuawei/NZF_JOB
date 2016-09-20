@@ -7,15 +7,16 @@ import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.graphics.Color;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
-import android.util.Log;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -24,8 +25,11 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.View.OnLongClickListener;
 import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.BaseAdapter;
 import android.widget.CheckBox;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -33,6 +37,7 @@ import android.widget.Toast;
 import com.tplink.tpsoundrecorder.R;
 import com.tplink.tpsoundrecorder.service.SoundRecorderService;
 import com.tplink.tpsoundrecorder.util.AndroidUtil;
+import com.tplink.tpsoundrecorder.util.MenuUtil;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -98,10 +103,9 @@ public class SoundListActivity extends AppCompatActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        MenuUtil.setMenuLL(this,R.layout.activity_sound_list,R.id.ll_call_list);
+
         mContext = this;
-
-        setContentView(R.layout.activity_sound_list);
-
         mEmptyView = findViewById(R.id.tv_empty);
         mLv = (ListView) findViewById(R.id.lv);
         toolbar = (Toolbar) findViewById(R.id.toolbar);
@@ -262,7 +266,6 @@ public class SoundListActivity extends AppCompatActivity {
          * 按照时间降序排列
          */
         Collections.sort(mFileList, new Comparator<File>() {
-
             @Override
             public int compare(File lhs, File rhs) {
                 return (int) (rhs.lastModified() - lhs.lastModified());

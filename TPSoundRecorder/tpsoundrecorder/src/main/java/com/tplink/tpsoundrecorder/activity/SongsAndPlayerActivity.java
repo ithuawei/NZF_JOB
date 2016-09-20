@@ -27,6 +27,7 @@ import android.widget.Toast;
 
 import com.tplink.tpsoundrecorder.R;
 import com.tplink.tpsoundrecorder.adapter.SongsExpandableAdapter;
+import com.tplink.tpsoundrecorder.util.MenuUtil;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -58,7 +59,7 @@ public class SongsAndPlayerActivity extends Activity implements View.OnClickList
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.songs_list_player);
+        MenuUtil.setMenuRL(this,R.layout.songs_list_player,R.id.rl_song_player);
         initData();
         initView();
     }

@@ -425,7 +425,7 @@ public class SoundRecorderService extends Service {
         }
 
         try {
-            uri = this.addToMediaDB(mRecorder.sampleFile());
+            uri = addToMediaDB(mRecorder.sampleFile());
             // 通知录音已经保存
             Intent intent = new Intent(ACTION_RECORDER_SAVE_FINISH);
             intent.putExtra(EXTRA_RECORDING_URI, uri);
@@ -459,31 +459,32 @@ public class SoundRecorderService extends Service {
      */
     private Uri addToMediaDB(File file) {
         Resources res = getResources();
-        ContentValues cv = new ContentValues();
         long current = System.currentTimeMillis();                  //现在的时间
         long modDate = file.lastModified();                         //最后修改时间
         String title = mRecorder.getStartRecordingTime();           //开始录制时间
         long sampleLengthMillis = mRecorder.sampleLength() * 1000L; //时长
 
         Uri uri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
-        final String[] ids = new String[]{
-                MediaStore.Audio.Playlists._ID
-        };
+
+        final String[] ids = new String[]{MediaStore.Audio.Playlists._ID};
+
         final String where = MediaStore.Audio.Playlists.DATA + "=?";
-        final String[] args = new String[]{
-                file.getAbsolutePath()
-        };
-        Cursor cursor = query(uri, ids, where, args, null);
+
+        final String[] args = new String[]{file.getAbsolutePath()};
+
+        Cursor cursor = getContentResolver().query(uri, ids, where, args, null);
 
         if (cursor != null && cursor.getCount() > 0) {
             cursor.close();
             return null;
         }
 
-        // Label the recorded audio file as MUSIC so that the file
-        // will be displayed automatically
+        ContentValues cv = new ContentValues();
+        /**
+         * Label the recorded audio file as MUSIC so that the file will be displayed automatically
+         * 将录制的音频文件的标签标记为音乐，以便将文件自动显示
+         */
         cv.put(MediaStore.Audio.Media.IS_MUSIC, "1");
-
         cv.put(MediaStore.Audio.Media.TITLE, title);                            //名称
         cv.put(MediaStore.Audio.Media.DATA, file.getAbsolutePath());            //绝对路径
         cv.put(MediaStore.Audio.Media.DATE_ADDED, (int) (current / 1000));      //添加到数据库的时间
@@ -495,6 +496,7 @@ public class SoundRecorderService extends Service {
         ContentResolver resolver = getContentResolver();
         Uri result;
         try {
+            //把信息插入表
             result = resolver.insert(uri, cv);
         } catch (Exception exception) {
             result = null;
@@ -513,22 +515,6 @@ public class SoundRecorderService extends Service {
         // scanner events that a recorded audio file just created.
         sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, result));
         return result;
-    }
-
-    /*
-     * A simple utility to do a query into the databases.
-     */
-    private Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs,
-                         String sortOrder) {
-        try {
-            ContentResolver resolver = getContentResolver();
-            if (resolver == null) {
-                return null;
-            }
-            return resolver.query(uri, projection, selection, selectionArgs, sortOrder);
-        } catch (UnsupportedOperationException ex) {
-            return null;
-        }
     }
 
     /**
@@ -557,7 +543,7 @@ public class SoundRecorderService extends Service {
      */
     private int getPlaylistId(Resources res) {
 
-        Cursor cursor = query(
+        Cursor cursor = getContentResolver().query(
                 MediaStore.Audio.Playlists.getContentUri("external"),   //uri
                 new String[]{MediaStore.Audio.Playlists._ID},           //projection
                 MediaStore.Audio.Playlists.NAME + "=?",                 //selection

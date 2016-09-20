@@ -29,12 +29,13 @@ import com.tplink.tpsoundrecorder.R;
 import com.tplink.tpsoundrecorder.other.PlatformBuildHelper;
 import com.tplink.tpsoundrecorder.service.SoundRecorderService;
 import com.tplink.tpsoundrecorder.util.AndroidUtil;
+import com.tplink.tpsoundrecorder.util.FileUtil;
 
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.util.List;
 
 public class Recorder implements OnCompletionListener, OnErrorListener {
     static final String TAG = "Recorder";
@@ -90,7 +91,10 @@ public class Recorder implements OnCompletionListener, OnErrorListener {
 
     MediaPlayer mPlayer = null;
 
+    private Context mContext;
+
     public Recorder(Context context) {
+        mContext = context;
         mStoragePath = AndroidUtil.getPhoneLocalStoragePath(context) + "/"
                 + SoundRecorderService.FOLDER_NAME;
         //平台初始化
@@ -149,6 +153,10 @@ public class Recorder implements OnCompletionListener, OnErrorListener {
         return (float) mSampleLength / 1000;
     }
 
+    public long getRealProgress() {
+        return mSampleLength + (System.currentTimeMillis() - mSampleStart);
+    }
+
     public File sampleFile() {
         return mSampleFile;
     }
@@ -173,7 +181,8 @@ public class Recorder implements OnCompletionListener, OnErrorListener {
         signalStateChanged(IDLE_STATE);
     }
 
-    /**重置录音机状态，如果已经录制过了，该文件将被留在磁盘上，并将被重新使用为一个新的记录
+    /**
+     * 重置录音机状态，如果已经录制过了，该文件将被留在磁盘上，并将被重新使用为一个新的记录
      * Resets the recorder state. If a sample was recorded, the file is left on
      * disk and will be reused for a new recording.
      */
@@ -210,21 +219,29 @@ public class Recorder implements OnCompletionListener, OnErrorListener {
                     mSampleFile = createTempFile(context, prefix, extension, sampleDir);
                 } else {
                     //获取当前日期
-                    String dateFormat = context.getResources().getString(R.string.def_date_format);
-                    SimpleDateFormat simpleDateFormat = new SimpleDateFormat(dateFormat);
-                    String time = simpleDateFormat.format(new Date(System.currentTimeMillis()));
-                    if (!TextUtils.isEmpty(time)) {
-                        time = time.replaceAll("[\\\\*|\":<>/?]", "_").replaceAll(" ",
-                                "\\\\" + " ");
-                    }
-                    mTime = time;
+//                    String dateFormat = context.getResources().getString(R.string.def_date_format);
+//                    SimpleDateFormat simpleDateFormat = new SimpleDateFormat(dateFormat);
+//                    String time = simpleDateFormat.format(new Date(System.currentTimeMillis()));
+//                    if (!TextUtils.isEmpty(time)) {
+//                        time = time.replaceAll("[\\\\*|\":<>/?]", "_").replaceAll(" ",
+//                                "\\\\" + " ");
+//                    }
+//                    mTime = time;
                     if (extension == null) {
                         extension = ".tmp";
                     }
 
                     //拼接：   ""+2010-01-02-12-03-06+".arr"
                     StringBuilder stringBuilder = new StringBuilder();
-                    stringBuilder.append(SAMPLE_PREFIX).append(time).append(extension);
+//                    stringBuilder.append(SAMPLE_PREFIX).append(time).append(extension);
+                    List<File> files = FileUtil.getFiles(mContext);
+                    String num = "" + (files.size()+1);
+                    if (num.length() == 1) {
+                        num = "0" + num;
+                    }
+                    String fullName = "Recording" + num;
+                    stringBuilder.append(SAMPLE_PREFIX).append(fullName).append(extension);
+
                     String name = stringBuilder.toString();
 
                     //(SoundRecorder,2010-01-02-12-04-39.amr)

@@ -24,6 +24,7 @@ import com.tplink.tpsoundrecorder.adapter.TabPageAdapter;
 import com.tplink.tpsoundrecorder.fragment.CallRecordingFragment;
 import com.tplink.tpsoundrecorder.fragment.RecordingFragment;
 import com.tplink.tpsoundrecorder.interfaces.onSelectionModeListener;
+import com.tplink.tpsoundrecorder.util.MenuUtil;
 import com.tplink.tpsoundrecorder.view.PagerSlidingTabStrip;
 import com.tplink.tpsoundrecorder.view.SoundRecorderViewPager;
 
@@ -50,8 +51,8 @@ public class SoundRecordActivity extends AppCompatActivity implements onSelectio
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        MenuUtil.setMenuCL(this,R.layout.sound_record_layout,R.id.main_content);
 
-        setContentView(R.layout.sound_record_layout);
         mToolbar = (Toolbar)findViewById(R.id.toolbar);
         setSupportActionBar(mToolbar);
 

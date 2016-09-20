@@ -25,6 +25,7 @@ import android.app.AlertDialog;
 import android.app.AlertDialog.Builder;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.ContextWrapper;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
 import android.content.Intent;
@@ -37,7 +38,6 @@ import android.content.res.Resources;
 import android.graphics.Color;
 import android.media.AudioManager;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -50,18 +50,14 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.Window;
-import android.view.WindowManager;
 import android.view.animation.LinearInterpolator;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.RadioButton;
-import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.Toolbar;
@@ -71,13 +67,19 @@ import com.tplink.tpsoundrecorder.other.SystemProperties;
 import com.tplink.tpsoundrecorder.recorder.Recorder;
 import com.tplink.tpsoundrecorder.service.SoundRecorderService;
 import com.tplink.tpsoundrecorder.util.AndroidUtil;
+import com.tplink.tpsoundrecorder.util.FileUtil;
+import com.tplink.tpsoundrecorder.util.MenuUtil;
+import com.tplink.tpsoundrecorder.util.NameUtil;
 import com.tplink.tpsoundrecorder.util.SystemPropertiesInvokeUtil;
 import com.tplink.tpsoundrecorder.view.WaveHelper;
 import com.tplink.tpsoundrecorder.view.WaveView;
 
+import java.io.File;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.List;
 
 public class SoundRecorder extends Activity
         implements Button.OnClickListener, Recorder.OnStateChangedListener {
@@ -106,7 +108,7 @@ public class SoundRecorder extends Activity
 
     private String timeCurremtMs;
 
-    private ArrayList<Integer> mSaveSongsSP;
+    private ArrayList<Long> mSaveSongsSP;
 
     /**
      * 如果通过其他应用（如在彩信中添加录音附件）调用录音机，则录音结束后，会结束录音机应用
@@ -197,16 +199,7 @@ public class SoundRecorder extends Activity
     @Override
     public void onCreate(Bundle icycle) {
         super.onCreate(icycle);
-        Toast.makeText(this, "onCreate", Toast.LENGTH_SHORT).show();
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            Window window = getWindow();
-            window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS
-                    | WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
-            window.getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                    | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
-            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-            window.setStatusBarColor(Color.TRANSPARENT);
-        }
+        MenuUtil.setMenuRL(this, R.layout.main, R.id.rl_main);
 
         mSharedPreferences = getSharedPreferences("storage_Path", Context.MODE_PRIVATE);
         mPrefsStoragePathEditor = mSharedPreferences.edit();
@@ -244,16 +237,7 @@ public class SoundRecorder extends Activity
             mRequestedType = SoundRecorderService.AUDIO_AMR;
             mFileType = 0;
         }
-        //还要设置偏移，否则状态栏和内容重叠
-        View view = View.inflate(this, R.layout.main, null);
-        RelativeLayout rl = (RelativeLayout) view.findViewById(R.id.rl_main);
-        ViewGroup.LayoutParams lp = new ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT);
 
-        LinearLayout content = new LinearLayout(this);
-        content.addView(rl, lp);
-        setContentView(content);
         mAudioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
 
         initResourceRefs();
@@ -547,11 +531,12 @@ public class SoundRecorder extends Activity
                     int sampleLength = SoundRecorderService.mRecorder.sampleLength();
                     mFlagView.setText("- " +
                             sampleLength / 60 / 60 + ":" +
-                            sampleLength/ 60 % 60 + ":" +
+                            sampleLength / 60 % 60 + ":" +
                             sampleLength % 60 + "." +
                             timeCurremtMs + " -");
                     //时间添加到集合，等下再保存sp
-                    mSaveSongsSP.add(sampleLength);
+                    long realProgress = SoundRecorderService.mRecorder.getRealProgress();
+                    mSaveSongsSP.add(realProgress);
                 }
                 break;
         }
@@ -560,12 +545,31 @@ public class SoundRecorder extends Activity
     @SuppressLint("InflateParams")
     private void showSaveDialog() {
         View saveDialogContentView = LayoutInflater.from(this).inflate(R.layout.dialog_save, null);
+
+        //获取和设置名字
+        EditText etName = (EditText) saveDialogContentView.findViewById(R.id.et_name);
+
+        //遍历文件夹目录，为了获取自动名称
+        List<File> files = FileUtil.getFiles(this);
+        final String name = NameUtil.getNames(files);
+
+        etName.setText(name);
+        etName.setSelection(name.length());
+
+        //点击停止键之前，其实已经生成了文件，此时如果取消并删除才会再删除，如果保存就不删除
         mSaveDialog = new Builder(this).setTitle(R.string.save_title)
                 .setView(saveDialogContentView)
                 .setPositiveButton(R.string.save_btn, new OnClickListener() {
                     public void onClick(DialogInterface dialog, int which) {
                         dialog.dismiss();
+                        String internalPath =
+                                AndroidUtil.getPhoneLocalStoragePath(SoundRecorder.this)
+                                        + File.separator + SoundRecorderService.FOLDER_NAME;
+                        //保存名字到路径
+                        savePreToMyPath(internalPath, name);
 
+                        if (mSaveSongsSP.size() > 0) {
+                        }
                         mSampleInterrupted = false;
                         mRecorderProcessed = true;
                         sendCommandToService(SoundRecorderService.ACTION_SAVE_RECORDING);
@@ -573,7 +577,6 @@ public class SoundRecorder extends Activity
                 }).setNegativeButton(R.string.delete_btn, new OnClickListener() {
                     public void onClick(DialogInterface dialog, int which) {
                         dialog.dismiss();
-                        mSaveSongsSP.clear();
                         showDeleteConfirmDialog();
                     }
                 }).setCancelable(false).show();
@@ -593,9 +596,37 @@ public class SoundRecorder extends Activity
                 sendCommandToService(SoundRecorderService.ACTION_PLAY_RECORDING);
             }
         });
+    }
 
-        EditText etName = (EditText) saveDialogContentView.findViewById(R.id.et_name);
-
+    private void savePreToMyPath(String internalPath, String name) {
+        try {
+            Field field;
+            // 获取ContextWrapper对象中的mBase变量。该变量保存了ContextImpl对象
+            field = ContextWrapper.class.getDeclaredField("mBase");
+            field.setAccessible(true);
+            // 获取mBase变量
+            Object obj = field.get(SoundRecorder.this);
+            // 获取ContextImpl。mPreferencesDir变量，该变量保存了数据文件的保存路径
+            field = obj.getClass().getDeclaredField("mPreferencesDir");
+            field.setAccessible(true);
+            // 创建自定义路径
+            File file = new File(internalPath);//同包名下。
+            // 修改mPreferencesDir变量的值
+            field.set(obj, file);
+            SharedPreferences mySharedPreferences =
+                    getSharedPreferences(name, Activity.MODE_PRIVATE);//文件名
+            SharedPreferences.Editor editor = mySharedPreferences.edit();
+            for (int i = 0; i < mSaveSongsSP.size(); i++) {
+                editor.putLong("time" + i, mSaveSongsSP.get(i));
+            }
+            editor.commit();
+        } catch (NoSuchFieldException e) {
+            e.printStackTrace();
+        } catch (IllegalArgumentException e) {
+            e.printStackTrace();
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        }
     }
 
     //确定删除？
@@ -611,6 +642,8 @@ public class SoundRecorder extends Activity
                         mRecorderProcessed = true;
                         //发送到服务，删除了录音
                         sendCommandToService(SoundRecorderService.ACTION_DELETE_RECORDING);
+                        //这里才真正清掉
+                        mSaveSongsSP.clear();
                     }
                 })
                 //取消
