@@ -14,7 +14,6 @@ package com.tplink.tpsoundrecorder.activity;
 import android.app.Activity;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.os.Environment;
 import android.util.Log;
 import android.view.View;
 import android.widget.ExpandableListView;
@@ -27,6 +26,7 @@ import android.widget.Toast;
 
 import com.tplink.tpsoundrecorder.R;
 import com.tplink.tpsoundrecorder.adapter.SongsExpandableAdapter;
+import com.tplink.tpsoundrecorder.util.FileUtil;
 import com.tplink.tpsoundrecorder.util.MenuUtil;
 
 import java.io.File;
@@ -100,25 +100,10 @@ public class SongsAndPlayerActivity extends Activity implements View.OnClickList
     }
 
     private ArrayList<String> getAllSongs() {
-        ArrayList<String> songs = new ArrayList<>();
-        //目录：/data
-        File songsDir = Environment.getDataDirectory();
-        //包名
-        String packageName = getPackageName();
-        //目录：/data/data/包名/shared_prefs
-        File shareDir = new File(songsDir + "/data/" + packageName + "/shared_prefs");
-        //File file = new File(songsDir+"/data/"+packageName+"/shared_prefs","Recoding0X.xml");
-        //文件：目录下的所有文件
-        if (!shareDir.exists()) {
-            return songs;
-        }
-        String[] list = shareDir.list();
-        for (int i = 0; i < list.length; i++) {
-            String s = list[i];
-            //Recoding0X.xml不要.xml
-            s = s.substring(0, s.indexOf("."));
-            songs.add(s);
-        }
+        ArrayList<String> songs = new ArrayList<String>();
+        List<File> songFiles = FileUtil.getSongFiles(this);
+        String songsNames = songFiles.toString();
+        Log.d("GGGG",songsNames );
         return songs;
     }
 

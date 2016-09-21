@@ -69,7 +69,6 @@ import com.tplink.tpsoundrecorder.service.SoundRecorderService;
 import com.tplink.tpsoundrecorder.util.AndroidUtil;
 import com.tplink.tpsoundrecorder.util.FileUtil;
 import com.tplink.tpsoundrecorder.util.MenuUtil;
-import com.tplink.tpsoundrecorder.util.NameUtil;
 import com.tplink.tpsoundrecorder.util.SystemPropertiesInvokeUtil;
 import com.tplink.tpsoundrecorder.view.WaveHelper;
 import com.tplink.tpsoundrecorder.view.WaveView;
@@ -547,14 +546,24 @@ public class SoundRecorder extends Activity
         View saveDialogContentView = LayoutInflater.from(this).inflate(R.layout.dialog_save, null);
 
         //获取和设置名字
-        EditText etName = (EditText) saveDialogContentView.findViewById(R.id.et_name);
+        final EditText etName = (EditText) saveDialogContentView.findViewById(R.id.et_name);
 
         //遍历文件夹目录，为了获取自动名称
-        List<File> files = FileUtil.getFiles(this);
-        final String name = NameUtil.getNames(files);
+        final List<File> files = FileUtil.getSongFiles(this);
+//        final String name = NameUtil.getNames(files);
+        String name = files.get(files.size() - 1)+"";//每次的最后一首都是新生成的。
+        name = name.substring(name.lastIndexOf("/")+1);
 
         etName.setText(name);
-        etName.setSelection(name.length());
+        etName.setSelection(name.length()-4); //.amr    .wav
+
+        final String internalPath =
+                AndroidUtil.getPhoneLocalStoragePath(SoundRecorder.this)
+                        + File.separator + SoundRecorderService.FOLDER_NAME;
+
+        //因为歌曲预先生成，所以歌词需要同步，保存名字到路径
+        //先自动保存一份
+        savePreToMyPath(internalPath, name);
 
         //点击停止键之前，其实已经生成了文件，此时如果取消并删除才会再删除，如果保存就不删除
         mSaveDialog = new Builder(this).setTitle(R.string.save_title)
@@ -562,22 +571,30 @@ public class SoundRecorder extends Activity
                 .setPositiveButton(R.string.save_btn, new OnClickListener() {
                     public void onClick(DialogInterface dialog, int which) {
                         dialog.dismiss();
-                        String internalPath =
-                                AndroidUtil.getPhoneLocalStoragePath(SoundRecorder.this)
-                                        + File.separator + SoundRecorderService.FOLDER_NAME;
-                        //保存名字到路径
-                        savePreToMyPath(internalPath, name);
 
-                        if (mSaveSongsSP.size() > 0) {
-                        }
                         mSampleInterrupted = false;
                         mRecorderProcessed = true;
                         sendCommandToService(SoundRecorderService.ACTION_SAVE_RECORDING);
+
+                        String finalName = etName.getText().toString();
+                        //重命名文件
+                        File file = new File(files.get(files.size() - 1)+"");//oldName
+                        boolean a = file.renameTo(new File(internalPath + "/" + finalName));
+                        //判断歌词
+                        List<File> songFlags = FileUtil.getSongFlags(SoundRecorder.this);
+                        String name = songFlags.get(songFlags.size() - 1)+"";//每次的最后一个XML
+                        name = name.substring(name.lastIndexOf("/")+1);
+                        //重命名
+                        File flag = new File(songFlags.get(songFlags.size() - 1)+"");//oldFlagName
+                        boolean b = flag.renameTo(new File(internalPath + "/" + finalName+".xml"));
+
                     }
                 }).setNegativeButton(R.string.delete_btn, new OnClickListener() {
                     public void onClick(DialogInterface dialog, int which) {
                         dialog.dismiss();
                         showDeleteConfirmDialog();
+                        //删掉歌词
+
                     }
                 }).setCancelable(false).show();
 

@@ -29,13 +29,12 @@ import com.tplink.tpsoundrecorder.R;
 import com.tplink.tpsoundrecorder.other.PlatformBuildHelper;
 import com.tplink.tpsoundrecorder.service.SoundRecorderService;
 import com.tplink.tpsoundrecorder.util.AndroidUtil;
-import com.tplink.tpsoundrecorder.util.FileUtil;
 
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.text.SimpleDateFormat;
-import java.util.List;
+import java.util.Date;
 
 public class Recorder implements OnCompletionListener, OnErrorListener {
     static final String TAG = "Recorder";
@@ -219,28 +218,27 @@ public class Recorder implements OnCompletionListener, OnErrorListener {
                     mSampleFile = createTempFile(context, prefix, extension, sampleDir);
                 } else {
                     //获取当前日期
-//                    String dateFormat = context.getResources().getString(R.string.def_date_format);
-//                    SimpleDateFormat simpleDateFormat = new SimpleDateFormat(dateFormat);
-//                    String time = simpleDateFormat.format(new Date(System.currentTimeMillis()));
-//                    if (!TextUtils.isEmpty(time)) {
-//                        time = time.replaceAll("[\\\\*|\":<>/?]", "_").replaceAll(" ",
-//                                "\\\\" + " ");
-//                    }
-//                    mTime = time;
+                    String dateFormat = context.getResources().getString(R.string.def_date_format);
+                    SimpleDateFormat simpleDateFormat = new SimpleDateFormat(dateFormat);
+                    String time = simpleDateFormat.format(new Date(System.currentTimeMillis()));
+                    if (!TextUtils.isEmpty(time)) {
+                        time = time.replaceAll("[\\\\*|\":<>/?]", "_").replaceAll(" ",
+                                "\\\\" + " ");
+                    }
+                    mTime = time;
                     if (extension == null) {
                         extension = ".tmp";
                     }
 
                     //拼接：   ""+2010-01-02-12-03-06+".arr"
                     StringBuilder stringBuilder = new StringBuilder();
-//                    stringBuilder.append(SAMPLE_PREFIX).append(time).append(extension);
-                    List<File> files = FileUtil.getFiles(mContext);
-                    String num = "" + (files.size()+1);
-                    if (num.length() == 1) {
-                        num = "0" + num;
-                    }
-                    String fullName = "Recording" + num;
-                    stringBuilder.append(SAMPLE_PREFIX).append(fullName).append(extension);
+//                    List<File> files = FileUtil.getFiles(mContext);
+//                    String num = "" + (files.size()+1);
+//                    if (num.length() == 1) {
+//                        num = "0" + num;
+//                    }
+//                    String fullName = "Recording" + num;
+                    stringBuilder.append(SAMPLE_PREFIX).append(time).append(extension);
 
                     String name = stringBuilder.toString();
 

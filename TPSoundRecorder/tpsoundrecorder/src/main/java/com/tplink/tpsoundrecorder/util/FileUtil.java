@@ -19,11 +19,13 @@ import com.tplink.tpsoundrecorder.service.SoundRecorderService;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 public class FileUtil {
 
-    public static List<File> getFiles(Context context) {
+    public static List<File> getSongFiles(Context context) {
         ArrayList<File> files = new ArrayList<File>();
 
         String sdPath = null;
@@ -69,6 +71,74 @@ public class FileUtil {
                 }
             }
         }
+        /**
+         * 按照时间降序排列
+         */
+        Collections.sort(files, new Comparator<File>() {
+            @Override
+            public int compare(File lhs, File rhs) {
+//                return (int) (rhs.lastModified() - lhs.lastModified());
+                return (int) (lhs.lastModified() - rhs.lastModified());
+            }
+        });
+
+        return files;
+    }
+    public static List<File> getSongFlags(Context context) {
+        ArrayList<File> files = new ArrayList<File>();
+
+        String sdPath = null;
+        String internalPath;
+        files.clear();
+
+        if (AndroidUtil.getSDState(context) != null
+                && AndroidUtil.getSDState(context).equals(Environment.MEDIA_MOUNTED)) {
+            if (context.getResources().getBoolean(R.bool.config_storage_path)) {
+                sdPath = AndroidUtil.getSDPath(context) + File.separator
+                        + SoundRecorderService.FOLDER_NAME;
+            } else {
+                sdPath = AndroidUtil.getSDPath(context) + File.separator
+                        + SoundRecorderService.FOLDER_NAME;
+            }
+        }
+        //  /storage/emulated/0     /      SoundRecorder
+        internalPath = AndroidUtil.getPhoneLocalStoragePath(context) + File.separator
+                + SoundRecorderService.FOLDER_NAME;
+        //SD卡路径
+        if (sdPath != null) {
+            File sdDir = new File(sdPath);
+            File[] soundFileList = sdDir.listFiles();
+            if (soundFileList != null) {
+                for (File file : soundFileList) {
+                    if (file.getName().endsWith(".xml")) {
+                        files.add(file);
+                    }
+                }
+            }
+        }
+        //内部路径
+        if (internalPath != null) {
+            File internalDir = new File(internalPath);
+            File[] soundFileList = internalDir.listFiles();
+            if (soundFileList != null) {
+                for (File file : soundFileList) {
+                    if (file.getName().endsWith(".xml")) {
+                        files.add(file);
+                    }
+                }
+            }
+        }
+        /**
+         * 按照时间降序排列
+         */
+        Collections.sort(files, new Comparator<File>() {
+            @Override
+            public int compare(File lhs, File rhs) {
+//                return (int) (rhs.lastModified() - lhs.lastModified());
+                return (int) (lhs.lastModified() - rhs.lastModified());
+            }
+        });
+
         return files;
     }
 }
